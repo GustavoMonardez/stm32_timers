@@ -11,18 +11,53 @@
 #include <string.h>
 
 void SystemClockConfig(void);
+void TIMER6_Init(void);
+void GPIO_Init(void);
 void Error_handler(void);
+
+TIM_HandleTypeDef htimer6;
 
 int main(void) {
 	HAL_Init();
 	SystemClockConfig();
+	GPIO_Init();
+	TIMER6_Init();
 
-	while(1);
+	// Lets start timer
+	HAL_TIM_Base_Start(&htimer6);
+
+	while(1) {
+		// Loop until the update event flag is set
+		while(!(TIM6->SR & TIM_SR_UIF));
+
+		TIM6->SR = 0;
+		// At this point 100ms have elapsed, so we
+		// move on to the next instruction (toggling led)
+		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+	}
 	return 0;
 }
 
 void SystemClockConfig(void) {
 	// By default the system clock is already set up
+}
+
+void TIMER6_Init(void) {
+	htimer6.Instance = TIM6;
+	htimer6.Init.Prescaler = 24;
+	htimer6.Init.Period = 64000 - 1;
+	if (HAL_TIM_Base_Init(&htimer6) != HAL_OK) {
+		Error_handler();
+	}
+}
+
+void GPIO_Init(void) {
+	__HAL_RCC_GPIOA_CLK_ENABLE();
+	GPIO_InitTypeDef gpio_led;
+	gpio_led.Pin = GPIO_PIN_5;
+	gpio_led.Mode = GPIO_MODE_OUTPUT_PP;
+	gpio_led.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOA, &gpio_led);
 }
 
 void Error_handler(void) {
